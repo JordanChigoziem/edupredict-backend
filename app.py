@@ -589,23 +589,35 @@ def delete_dataset(did):
 @token_required
 def get_analytics():
     conn = get_db()
-    uid = request.user_id
-    total_students = conn.execute('SELECT COUNT(*) FROM students WHERE user_id=?',(uid,)).fetchone()[0]
-    high_performers = conn.execute("SELECT COUNT(*) FROM students WHERE user_id=? AND performance='High Performer'",(uid,)).fetchone()[0]
-    at_risk = conn.execute("SELECT COUNT(*) FROM students WHERE user_id=? AND risk_level='High Risk'",(uid,)).fetchone()[0]
-    moderate_risk = conn.execute("SELECT COUNT(*) FROM students WHERE user_id=? AND risk_level='Moderate Risk'",(uid,)).fetchone()[0]
-    low_risk = conn.execute("SELECT COUNT(*) FROM students WHERE user_id=? AND risk_level='Low Risk'",(uid,)).fetchone()[0]
-    predictions = conn.execute('SELECT confidence FROM predictions WHERE user_id=?',(uid,)).fetchall()
-    avg_score = None
-    if predictions:
-        c = [float(p['confidence'].replace('%','')) for p in predictions if p['confidence']]
-        if c: avg_score = round(sum(c)/len(c),1)
-    total_predictions = conn.execute('SELECT COUNT(*) FROM predictions WHERE user_id=?',(uid,)).fetchone()[0]
-    total_reports = conn.execute('SELECT COUNT(*) FROM reports WHERE user_id=?',(uid,)).fetchone()[0]
+    try:
+        total_students = conn.execute('SELECT COUNT(*) FROM students').fetchone()[0]
+        high_performers = conn.execute("SELECT COUNT(*) FROM students WHERE performance = 'High Performer'").fetchone()[0]
+        at_risk = conn.execute("SELECT COUNT(*) FROM students WHERE risk_level = 'High Risk'").fetchone()[0]
+        moderate_risk = conn.execute("SELECT COUNT(*) FROM students WHERE risk_level = 'Moderate Risk'").fetchone()[0]
+        low_risk = conn.execute("SELECT COUNT(*) FROM students WHERE risk_level = 'Low Risk'").fetchone()[0]
+        predictions = conn.execute('SELECT confidence FROM predictions').fetchall()
+        avg_score = None
+        if predictions:
+            c = [float(p['confidence'].replace('%','')) for p in predictions if p['confidence']]
+            if c: avg_score = round(sum(c)/len(c), 1)
+        total_predictions = conn.execute('SELECT COUNT(*) FROM predictions').fetchone()[0]
+        total_reports = conn.execute('SELECT COUNT(*) FROM reports').fetchone()[0]
+        total_models = conn.execute('SELECT COUNT(*) FROM models').fetchone()[0]
+    except Exception as e:
+        conn.close()
+        return jsonify({'error': str(e)}), 500
     conn.close()
-    return jsonify({'total_students':total_students,'high_performers':high_performers,'at_risk':at_risk,
-        'moderate_risk':moderate_risk,'low_risk':low_risk,'overall_accuracy':avg_score,
-        'total_predictions':total_predictions,'total_reports':total_reports})
+    return jsonify({
+        'total_students': total_students,
+        'high_performers': high_performers,
+        'at_risk': at_risk,
+        'moderate_risk': moderate_risk,
+        'low_risk': low_risk,
+        'overall_accuracy': avg_score,
+        'total_predictions': total_predictions,
+        'total_reports': total_reports,
+        'total_models': total_models,
+    })
 
 if __name__ == '__main__':
     init_db()
